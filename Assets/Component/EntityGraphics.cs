@@ -37,6 +37,9 @@ public class EntityGraphics : IComponentData
         args = new uint[5] { 6, 0, 0, 0, 0 };
         argsBuffer = new ComputeBuffer(1, args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
 
+#if UNITY_EDITOR
+        entityManager.SetName(bufferEntity, $"[EntityGraphics]{bufferEntity.Index}");
+#endif
         entityManager.SetComponentData(bufferEntity, new SpriteIndexHook { MaterialValue = bufferEntity.Index });
         entityManager.AddComponentObject(bufferEntity, this);
 
