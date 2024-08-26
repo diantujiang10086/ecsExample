@@ -84,11 +84,13 @@ public static class FrameAnimationHelper
         {
             for (int _col = 0; _col < col; _col++)
             {
-                array[_row * col + _col] = new float4(colStride, rowStride, colStride * _col, rowStride * _row);
+                float vStart = 1f - rowStride * (_row + 1);
+                array[_row * col + _col] = new float4(colStride, rowStride, colStride * _col, vStart);
             }
         }
         return array;
     }
+
 
     private static void Initialize()
     {
