@@ -80,11 +80,11 @@ public static class FrameAnimationHelper
         float4[] array = new float4[spriteCount];
         float rowStride = 1f / row;
         float colStride = 1f / col;
-        for (int _col = 0; _col < col; _col++)
+        for (int _row = 0; _row < row; _row++)
         {
-            for (int _row = 0; _row < row; _row++)
+            for (int _col = 0; _col < col; _col++)
             {
-                array[_col * row + _row] = new float4(rowStride, colStride, rowStride * _row, colStride * _col);
+                array[_row * col + _col] = new float4(colStride, rowStride, colStride * _col, rowStride * _row);
             }
         }
         return array;
