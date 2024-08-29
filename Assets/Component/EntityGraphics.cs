@@ -4,9 +4,11 @@ using UnityEngine;
 
 public class EntityGraphics : IComponentData
 {
+    private const float clearTime = 1;
     public int materialId;
     public int atlasId;
     public Entity bufferEntity;
+    public int instanceCount;
     private ComputeBuffer uvBuffer;
     private ComputeBuffer indexBuffer;
     private ComputeBuffer matrixBuffer;
@@ -14,22 +16,19 @@ public class EntityGraphics : IComponentData
     private ComputeBuffer argsBuffer;
     private Material material;
     private uint[] args;
-    private int instanceCount;
     private EntityManager entityManager;
     private DynamicGenerateIDList dynamicGenerateIDList;
+    private float clearTimer = clearTime;
     public EntityGraphics()
     {
 
     }
-    public EntityGraphics(int atlasKey, EntityManager entityManager, Shader shader, Texture atlas, float4[] atlasUv )
+    public EntityGraphics(int atlasKey, EntityManager entityManager, Shader shader, Texture atlas, float4[] atlasUv)
     {
         atlasId = atlasKey;
         bufferEntity = entityManager.CreateEntity(typeof(SpriteIndexBuffer), typeof(SpriteMatrixBuffer), typeof(SpriteColorBuffer), typeof(SpriteIndexHook));
         dynamicGenerateIDList = new DynamicGenerateIDList();
         this.entityManager = entityManager;
-        indexBuffer = new ComputeBuffer(1, sizeof(int));
-        matrixBuffer = new ComputeBuffer(1, 16);
-        colorsBuffer = new ComputeBuffer(1, 16);
         material = new Material(shader);
         material.mainTexture = atlas;
 
@@ -46,43 +45,41 @@ public class EntityGraphics : IComponentData
         uvBuffer = new ComputeBuffer(atlasUv.Length, 16);
         uvBuffer.SetData(atlasUv);
         material.SetBuffer("uvBuffer", uvBuffer);
+        ComputeBufferInitialize();
     }
 
     public int GenerateId()
     {
-       var bufferId = dynamicGenerateIDList.GenerateID();
-       var indexBuffer = entityManager.GetBuffer<SpriteIndexBuffer>(bufferEntity);
-       var matrixBuffer = entityManager.GetBuffer<SpriteMatrixBuffer>(bufferEntity);
-       var colorBuffer = entityManager.GetBuffer<SpriteColorBuffer>(bufferEntity);
+        var bufferId = dynamicGenerateIDList.GenerateID();
+        var indexBuffer = entityManager.GetBuffer<SpriteIndexBuffer>(bufferEntity);
+        var matrixBuffer = entityManager.GetBuffer<SpriteMatrixBuffer>(bufferEntity);
+        var colorBuffer = entityManager.GetBuffer<SpriteColorBuffer>(bufferEntity);
 
-        if(indexBuffer.Length <= bufferId)
+        if (indexBuffer.Length <= bufferId)
         {
             indexBuffer.Add(new SpriteIndexBuffer { });
             matrixBuffer.Add(new SpriteMatrixBuffer { });
             colorBuffer.Add(new SpriteColorBuffer { });
         }
 
+        instanceCount++;
         return bufferId;
     }
 
     public void RemoveBuffer(int bufferId)
     {
-        dynamicGenerateIDList.Recycle(bufferId);
-        var indexBuffer = entityManager.GetBuffer<SpriteIndexBuffer>(bufferEntity);
-        if (bufferId >= indexBuffer.Length)
-            return;
-
-        var matrixBuffer = entityManager.GetBuffer<SpriteMatrixBuffer>(bufferEntity);
         var colorBuffer = entityManager.GetBuffer<SpriteColorBuffer>(bufferEntity);
-        indexBuffer.RemoveAtSwapBack(bufferId);
-        matrixBuffer.RemoveAtSwapBack(bufferId);
-        colorBuffer.RemoveAtSwapBack(bufferId);
+        if (bufferId >= colorBuffer.Length)
+            return;
+        dynamicGenerateIDList.Recycle(bufferId);
+        colorBuffer[bufferId] = default(float4);
+        instanceCount--;
     }
 
     public void UpdateBuffer(EntityManager entityManager)
     {
         var spriteIndexBuffer = entityManager.GetBuffer<SpriteIndexBuffer>(bufferEntity);
-        instanceCount = spriteIndexBuffer.Length;
+        var instanceCount = spriteIndexBuffer.Length;
         if (spriteIndexBuffer.Length == 0)
             return;
 
@@ -110,10 +107,28 @@ public class EntityGraphics : IComponentData
     public void Draw(Mesh mesh, Bounds bounds)
     {
         if (instanceCount == 0)
+        {
+            clearTimer -= Time.deltaTime;
+            if (clearTimer <= 0)
+            {
+                ComputeBufferInitialize();
+            }
             return;
+        }
 
-        Graphics.DrawMeshInstancedIndirect(mesh, 0, material, bounds, argsBuffer);
+        Graphics.DrawMeshInstancedIndirect(
+            mesh,
+            0,
+            material,
+            bounds,
+            argsBuffer,
+            receiveShadows: false,
+            castShadows: UnityEngine.Rendering.ShadowCastingMode.Off,
+            lightProbeUsage: UnityEngine.Rendering.LightProbeUsage.Off);
+
+        clearTimer = clearTime;
     }
+
 
     public void Release()
     {
@@ -122,5 +137,12 @@ public class EntityGraphics : IComponentData
         matrixBuffer.Release();
         colorsBuffer.Release();
         argsBuffer.Release();
+    }
+
+    private void ComputeBufferInitialize()
+    {
+        indexBuffer = new ComputeBuffer(1, sizeof(int));
+        matrixBuffer = new ComputeBuffer(1, 16);
+        colorsBuffer = new ComputeBuffer(1, 16);
     }
 }
