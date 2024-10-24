@@ -5,4 +5,5 @@
 /obj
 /Temp
 /.vsconfig
-/Assembly-CSharp.csproj
+*.csproj
+/UserSettings
