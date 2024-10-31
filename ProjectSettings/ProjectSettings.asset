@@ -735,7 +735,7 @@ PlayerSettings:
   webGLMemoryGeometricGrowthCap: 96
   webGLPowerPreference: 2
   scriptingDefineSymbols:
-    Standalone: UNITY_PHYSICS_CUSTOM
+    Standalone: UNITY_PHYSICS_CUSTOM;LINEAR_COLOR_SPACE_FIX_ADDITIVE_ALPHApu
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend: {}
