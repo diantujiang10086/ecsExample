@@ -5,11 +5,9 @@ using UnityEngine;
 
 public partial struct InputSystem : ISystem
 {
-    private EntityQuery entityQuery;
     void OnCreate(ref SystemState state)
     {
         state.RequireForUpdate<PlayerComponent>();
-        entityQuery = state.GetEntityQuery(typeof(PlayerComponent));
     }
 
     void OnUpdate(ref SystemState state)
@@ -17,16 +15,16 @@ public partial struct InputSystem : ISystem
         var Horizontal = Input.GetAxisRaw("Horizontal");
         var Vertical = Input.GetAxisRaw("Vertical");
 
-        var entities = entityQuery.ToEntityArray(Allocator.TempJob);
-        if (entities.Length == 0)
+        if(!SystemAPI.TryGetSingleton<PlayerComponent>(out var playerComponent))
             return;
-        var player = entities[0];
+
+
+        var player = playerComponent.Value;
         
         var attribute = state.EntityManager.GetBuffer<AttributeComponent>(player);
         var transform = state.EntityManager.GetComponentData<LocalTransform>(player);
         var offset = new Unity.Mathematics.float3(Horizontal, 0, Vertical) * (attribute[(int)AttributeEnum.MoveSpeed].Value * SystemAPI.Time.DeltaTime);
         transform.Position += offset;
         state.EntityManager.SetComponentData(player, transform);
-        entities.Dispose();
     }
 }

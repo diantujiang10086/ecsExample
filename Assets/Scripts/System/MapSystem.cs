@@ -1,9 +1,11 @@
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Transforms;
 
+[BurstCompile]
 public partial struct MapSystem : ISystem
 {
     void OnCreate(ref SystemState state) 
@@ -11,6 +13,7 @@ public partial struct MapSystem : ISystem
         state.RequireForUpdate<MapComponent>();
         state.RequireForUpdate<PrefabMapComponent>();
     }
+    [BurstCompile]
     void OnUpdate(ref SystemState state) 
     {
         var prefabDict = SystemAPI.GetSingleton<PrefabMapComponent>().dict;
@@ -28,7 +31,7 @@ public partial struct MapSystem : ISystem
                 var player = entityManager.Instantiate(prefab);
                 var localTransform = LocalTransform.FromPositionRotationScale(mapComponent.playerPosition, quaternion.identity, 1);
                 entityManager.SetComponentData(player, localTransform);
-                entityManager.AddComponent<PlayerComponent>(player);
+                entityManager.CreateSingleton(new PlayerComponent { Value = player });
             }
             entityManager.AddComponent<MapRuningComponent>(mapComponent.entity);
         }
@@ -52,24 +55,23 @@ public partial struct MapSystem : ISystem
 
         if (!prefabDict.TryGetValue(mapComponent.spawnEnemy, out var enemyEntity))
             return;
-        var query = state.GetEntityQuery(typeof(PlayerComponent));
-        var entities = query.ToEntityArray(Allocator.TempJob);
-        var playerEntity = entities[0];
+
+        var playerCompnent = SystemAPI.GetSingleton<PlayerComponent>();
         
         var job = new SpawnJob
         {
             ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter(),
-            playerPosition = entityManager.GetComponentData<LocalTransform>(playerEntity).Position,
-            player = playerEntity,
+            playerPosition = entityManager.GetComponentData<LocalTransform>(playerCompnent.Value).Position,
+            player = playerCompnent.Value,
             range = mapComponent.range,
             random = new Random((uint)UnityEngine.Random.Range(-99999999, 99999999)),
             prefabEntity = enemyEntity
         };
         var jobHandle = job.Schedule(mapComponent.spawnCount, 128);
         jobHandle.Complete();
-        entities.Dispose();
     }
 
+    [BurstCompile]
     struct SpawnJob : IJobParallelFor
     {
         [ReadOnly] public float3 playerPosition;
@@ -78,6 +80,7 @@ public partial struct MapSystem : ISystem
         [ReadOnly] public Entity prefabEntity;
         public Random random;
         public EntityCommandBuffer.ParallelWriter ecb;
+        [BurstCompile]
         public void Execute(int index)
         {
             var entity = ecb.Instantiate(index, prefabEntity);

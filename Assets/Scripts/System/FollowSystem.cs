@@ -1,9 +1,11 @@
-﻿using Unity.Collections;
+﻿using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Transforms;
 
+[BurstCompile]
 public partial struct FollowSystem : ISystem
 {
     private EntityQuery entityQuery;
@@ -12,6 +14,7 @@ public partial struct FollowSystem : ISystem
         state.RequireForUpdate<FollowComponent>();
         entityQuery = state.GetEntityQuery(typeof(FollowComponent));
     }
+    [BurstCompile]
     void OnUpdate(ref SystemState state) 
     {
         var entities = entityQuery.ToEntityArray(Allocator.TempJob);
@@ -31,6 +34,7 @@ public partial struct FollowSystem : ISystem
         entities.Dispose();
     }
 
+    [BurstCompile]
     struct FollowJob : IJobParallelFor
     {
         [ReadOnly] public float deltaTime;
@@ -39,14 +43,21 @@ public partial struct FollowSystem : ISystem
         [ReadOnly] public BufferLookup<AttributeComponent> attributeComponentLookup;
         [ReadOnly] public NativeArray<Entity> entities;
         public EntityCommandBuffer.ParallelWriter ecb;
+        [BurstCompile]
         public void Execute(int index)
         {
             var entity = entities[index];
             localTransformLookup.TryGetComponent(entity, out var enemyTransform);
             followComponentLookup.TryGetComponent(entity, out var followComponent);
-            attributeComponentLookup.TryGetBuffer(entity, out var attributeComponent);
 
             localTransformLookup.TryGetComponent(followComponent.Value, out var targetTransform);
+
+            if(Helper.ArePointsClose(enemyTransform.Position, targetTransform.Position))
+            {
+                return;
+            }
+
+            attributeComponentLookup.TryGetBuffer(entity, out var attributeComponent);
 
             enemyTransform.Position = math.lerp(enemyTransform.Position, targetTransform.Position, attributeComponent[(int)AttributeEnum.MoveSpeed].Value * deltaTime);
 

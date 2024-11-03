@@ -4,7 +4,7 @@ using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Transforms;
-
+[BurstCompile]
 public partial struct RequestLoadPrefabSystem : ISystem
 {
     private EntityQuery entityQuery;
@@ -13,7 +13,7 @@ public partial struct RequestLoadPrefabSystem : ISystem
         state.RequireForUpdate<RequestLoadPrefab>();
         entityQuery = state.GetEntityQuery(typeof(RequestLoadPrefab));
     }
-
+    [BurstCompile]
     void OnUpdate(ref SystemState state) 
     {
         var components = entityQuery.ToComponentDataArray<RequestLoadPrefab>(Allocator.TempJob);
