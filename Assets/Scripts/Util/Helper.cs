@@ -8,13 +8,4 @@ public static class Helper
         buffer[(int)attributeEnum] = new AttributeComponent { Value = value };
     }
 
-    public static Entity GetPlayer(EntityQuery entityQuery)
-    {
-        var entities = entityQuery.ToEntityArray(Allocator.TempJob);
-        if(entities.Length > 0)
-        {
-            return entities[0];
-        }
-        return default;
-    }
 }

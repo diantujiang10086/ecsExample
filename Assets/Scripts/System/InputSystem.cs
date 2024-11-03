@@ -1,3 +1,4 @@
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Transforms;
 using UnityEngine;
@@ -16,13 +17,16 @@ public partial struct InputSystem : ISystem
         var Horizontal = Input.GetAxisRaw("Horizontal");
         var Vertical = Input.GetAxisRaw("Vertical");
 
-        var player = Helper.GetPlayer(entityQuery);
-        if (player == Entity.Null)
+        var entities = entityQuery.ToEntityArray(Allocator.TempJob);
+        if (entities.Length == 0)
             return;
+        var player = entities[0];
+        
         var attribute = state.EntityManager.GetBuffer<AttributeComponent>(player);
         var transform = state.EntityManager.GetComponentData<LocalTransform>(player);
         var offset = new Unity.Mathematics.float3(Horizontal, 0, Vertical) * (attribute[(int)AttributeEnum.MoveSpeed].Value * SystemAPI.Time.DeltaTime);
         transform.Position += offset;
         state.EntityManager.SetComponentData(player, transform);
+        entities.Dispose();
     }
 }
