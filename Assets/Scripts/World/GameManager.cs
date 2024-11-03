@@ -2,9 +2,12 @@
 using Unity.Scenes;
 using UnityEngine;
 
-public class GameManager : MonoBehaviour
+public class GameManager : MonoSingleton<GameManager>
 {
     public SubScene subScene;
+
+    private World world;
+    private EntityManager entityManager;
 
     private void Awake()
     {
@@ -14,13 +17,13 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        GlobalData.Initialize();
+        world = World.DefaultGameObjectInjectionWorld;
+        entityManager = world.EntityManager;
 
-        var world = World.DefaultGameObjectInjectionWorld;
         SceneSystem.LoadSceneAsync(world.Unmanaged, subScene.SceneGUID, new SceneSystem.LoadParameters { AutoLoad = true });
     }
     private void OnDestroy()
     {
-        GlobalData.Clear();
+
     }
 }
